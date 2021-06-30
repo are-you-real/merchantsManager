@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+    <http:listener-config name="merchantsmanager-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="merchantsmanager-config" api="resource::70597389-aa31-4b80-9110-c4594804e6d1:merchantsmanager:2.0.6:raml:zip:merchantsmanager.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <db:config name="Database_Config" doc:name="Database Config" doc:id="6c8cb516-982d-4f6d-a35c-9f7c6deca77e" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" database="db_formerchants" />
+	</db:config>
+	<flow name="merchantsmanager-main">
+        <http:listener config-ref="merchantsmanager-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="merchantsmanager-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="merchantsmanager-console">
+        <http:listener config-ref="merchantsmanager-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="merchantsmanager-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\discounts:merchantsmanager-config">
+        <logger level="INFO" message="get:\discounts:merchantsmanager-config" />
+    </flow>
+    <flow name="get:\products:merchantsmanager-config">
+        <logger level="INFO" message="get:\products:merchantsmanager-config" />
+		<set-variable value="#[attributes.queryParams.limit as Number default -1]" doc:name="limit" doc:id="b8c855b9-b4dc-46f1-b86e-fab68184d8c4" variableName="limitVar" />
+		<set-variable value='#[attributes.queryParams.sortBy as String default "sortID"]' doc:name="sortVar" doc:id="958b303d-28e0-4cbb-b1d0-b81a71e22a6e" variableName="sortByVar" />
+		<set-variable value="#[attributes.queryParams.offset as Number default 0]" doc:name="offset" doc:id="6314eedc-5632-43c8-806a-c5c2f94ad1f8" variableName="offsetVar" />
+		<choice doc:name="PagingChoice" doc:id="91429d2b-5869-421c-a372-62b918e64ed3" >
+			<when expression="#[vars.limitVar &gt; 0]" >
+				<choice doc:name="OrderChoice" doc:id="331d19ce-52f8-4bf9-b2a4-3d199e516f1d" >
+					<when expression='#[vars.sortByVar == "inventory"]' >
+						<db:select doc:name="Select" doc:id="aede9694-a998-4321-a931-194f46fb54e7" config-ref="Database_Config" >
+							<db:sql ><![CDATA[SELECT
+products.id, products.category, products.name, products.description, products.unitPrice, products.inventory, products.paymentOption, products.deliveryMethod,
+product_discount.dateFrom, product_discount.dateTo, product_discount.discount
+FROM products
+LEFT JOIN product_discount ON products.id = product_discount.productId
+WHERE products.inventory>=5 ORDER BY products.inventory LIMIT :offsetVar, :limitVar;
+]]></db:sql>
+							<db:input-parameters ><![CDATA[#[{
+	offsetVar:vars.offsetVar, 
+	limitVar:vars.limitVar
+}]]]></db:input-parameters>
+						</db:select>
+					</when>
+					<when expression='#[vars.sortByVar == "unit-price"]' >
+						<db:select doc:name="Select" doc:id="a6fe7d6b-b0e0-447b-851d-7843db90d907" config-ref="Database_Config">
+							<db:sql ><![CDATA[SELECT
+products.id, products.category, products.name, products.description, products.unitPrice, products.inventory, products.paymentOption, products.deliveryMethod,
+product_discount.dateFrom, product_discount.dateTo, product_discount.discount
+FROM products
+LEFT JOIN product_discount ON products.id = product_discount.productId
+WHERE products.inventory>=5 ORDER BY products.unitPrice LIMIT :offsetVar, :limitVar;]]></db:sql>
+							<db:input-parameters ><![CDATA[#[{
+	offsetVar:vars.offsetVar, 
+	limitVar:vars.limitVar
+}]]]></db:input-parameters>
+						</db:select>
+					</when>
+					<otherwise >
+						<db:select doc:name="Select" doc:id="5213b410-0989-467e-ad74-48c09f353cdd" config-ref="Database_Config" >
+							<db:sql ><![CDATA[SELECT
+products.id, products.category, products.name, products.description, products.unitPrice, products.inventory, products.paymentOption, products.deliveryMethod,
+product_discount.dateFrom, product_discount.dateTo, product_discount.discount
+FROM products
+LEFT JOIN product_discount ON products.id = product_discount.productId
+WHERE products.inventory>=5 LIMIT :offsetVar, :limitVar;]]></db:sql>
+							<db:input-parameters ><![CDATA[#[{
+	offsetVar:vars.offsetVar, 
+	limitVar:vars.limitVar
+}]]]></db:input-parameters>
+						</db:select>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise >
+				<choice doc:name="OrderChoice" doc:id="45a8e8ac-8d29-4ae7-8d6b-6f246e329020" >
+					<when expression='#[vars.sortByVar == "inventory"]' >
+						<db:select doc:name="Select" doc:id="1736b3ba-8597-439c-b92b-25c494410b19" config-ref="Database_Config" >
+							<db:sql ><![CDATA[SELECT
+products.id, products.category, products.name, products.description, products.unitPrice, products.inventory, products.paymentOption, products.deliveryMethod,
+product_discount.dateFrom, product_discount.dateTo, product_discount.discount
+FROM products
+LEFT JOIN product_discount ON products.id = product_discount.productId
+WHERE products.inventory>=5 ORDER BY products.inventory;]]></db:sql>
+						</db:select>
+					</when>
+					<when expression='#[vars.sortByVar == "unit-price"]' >
+						<db:select doc:name="" doc:id="01001c5e-9b86-4c98-8cf7-c71f7d4fb566" config-ref="Database_Config" >
+							<db:sql ><![CDATA[SELECT
+products.id, products.category, products.name, products.description, products.unitPrice, products.inventory, products.paymentOption, products.deliveryMethod,
+product_discount.dateFrom, product_discount.dateTo, product_discount.discount
+FROM products
+LEFT JOIN product_discount ON products.id = product_discount.productId
+WHERE products.inventory>=5 ORDER BY products.unitPrice;]]></db:sql>
+						</db:select>
+					</when>
+					<otherwise >
+						<db:select doc:name="" doc:id="5186ce3b-064c-4981-ab54-fea794c52960" config-ref="Database_Config" >
+							<db:sql ><![CDATA[SELECT
+products.id, products.category, products.name, products.description, products.unitPrice, products.inventory, products.paymentOption, products.deliveryMethod,
+product_discount.dateFrom, product_discount.dateTo, product_discount.discount
+FROM products
+LEFT JOIN product_discount ON products.id = product_discount.productId
+WHERE inventory>=5 ;]]></db:sql>
+						</db:select>
+					</otherwise>
+				</choice>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="" doc:id="428e5247-988c-4cc0-bad1-e2d8c0373d10" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+---
+payload map ( payload01 , indexOfPayload01 ) -> {		 	     
+	"unit-price":payload01.unitPrice as Number,
+	delivery: payload01.deliveryMethod as String,
+	"payment-options": payload01.paymentOption as String,
+	name: payload01.name as String,
+	description: payload01.description as String,
+	category: payload01.category as String,
+	inventory: payload01.inventory as Number
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+    </flow>
+    <flow name="post:\discounts:application\json:merchantsmanager-config">
+        <logger level="INFO" message="post:\discounts:application\json:merchantsmanager-config" />
+		<db:insert doc:name="Insert" doc:id="473f4962-a31a-49d8-8330-dccb159de923" config-ref="Database_Config">
+			<db:sql ><![CDATA[INSERT INTO product_discount( productId, dateFrom, dateTo, discount ) VALUES (8,"2111-12-12","2111-12-12",2);]]></db:sql>
+		</db:insert>
+    </flow>
+</mule>
